@@ -6,7 +6,7 @@ import forgi
 from forgi.graph.bulge_graph import BulgeGraph
 
 class Aptamer_Fold():
-    def __init__(self, sequence='ATA', n_tmpl=6, l_fix=4):
+    def __init__(self, sequence='ATA', n_tmpl=4, l_fix=4):
         self.l_fix= None # number of fixed base pairs in the 5' 3' bonds.
         self.n_tmpl = None
         self.n_wrld = None
@@ -34,7 +34,7 @@ class Aptamer_Fold():
         """
         Converts a nucleotide string into a list of numeric representations.
         """
-        mapping = {'A': 0, 'T': 3, 'C': 1, 'G': 2}
+        mapping = {'A': 0, 'a': 0, 'T': 3, 't': 3, 'C': 1, 'c':1, 'G': 2, 'g':2}
         self.sqnc_num = []
         for char in self.sequence:
             if char in mapping:
@@ -50,14 +50,16 @@ class Aptamer_Fold():
         """
         self.B_g = np.zeros((self.n_wrld, self.n_wrld), dtype=int)
         for i in range(self.n_wrld):
-            for j in range(i+1,self.n_wrld):
+            for j in range(i+self.n_tmpl//2 +1,self.n_wrld):
                 if (i <= self.l_fix -1 or j <= self.l_fix-1) and (i + j == self.n_wrld - 1):
                     self.B_g[i, j] = 1
                     self.B_g[j, i] = 1
-                if i > self.l_fix -1 and j > self.l_fix -1 and self.sqnc_num[i] + self.sqnc_num[j] == 3 and np.abs(i - j) >= self.n_tmpl - 1:
+                if self.n_wrld - self.l_fix -1 >= i > self.l_fix -1 and self.n_wrld - self.l_fix -1>= j > self.l_fix -1 and self.sqnc_num[i] + self.sqnc_num[j] == 3 and np.abs(i - j) >= self.n_tmpl//2 +1:
                     self.B_g[i, j] = 1
                     self.B_g[j, i] = 1
+        
         return
+
 
     def motif_ngh_dct(self,):
         """
@@ -138,8 +140,8 @@ class Aptamer_Fold():
                                     self.C_dct[str(k)].remove(j + k - self.n_tmpl // 2)
                                 except ValueError:
                                     pass
-                        elif (j >= i + 5 and j <= self.n_wrld - 5 and
-                              np.all(self.B_g[list(range(i, i + self.n_tmpl // 2))][:, list(range(j + self.n_tmpl // 2 - 1, j - 1, -1))] == np.eye(self.n_tmpl // 2, dtype=int))):
+                        elif (j >= i + self.n_tmpl//2 +1 and j <= self.n_wrld - self.l_fix -1 and
+                              np.all(np.diag(self.B_g[list(range(i, i + self.n_tmpl // 2))][:, list(range(j + self.n_tmpl // 2 - 1, j - 1, -1))]) == np.ones(self.n_tmpl // 2, dtype=int))):
                             flag = True
                             self.motifs.append([(i + k, j + self.n_tmpl // 2 - 1 - k) for k in range(self.n_tmpl // 2)])
                             
@@ -213,11 +215,14 @@ class Aptamer_Fold():
             n_lst = len(lst)
             list_strings = []
             for structure in structures:
-                    db_string = '('*4 + '.'*(n_lst-8) + ')'*4 
+                    db_string = '('*self.l_fix + '.'*(n_lst-(self.l_fix*2)) + ')'*self.l_fix
+                    string_list = list(db_string)
                     for bond in structure:
-                        new_string = db_string[:bond[0]] + '(' + db_string[bond[0]+1:bond[1]]+ ')'  +db_string[bond[1]+1:]
-                        db_string = new_string
-                
+                        string_list[bond[0]] = '('
+                        string_list[bond[1]] = ')'
+                        #new_string = db_string[:bond[0]] + '(' + db_string[bond[0]+1:bond[1]]+ ')'  +db_string[bond[1]+1:]
+                        #db_string = new_string
+                    db_string = ''.join(string_list)
                     list_strings.append( db_string)    
             return list_strings
             
@@ -235,8 +240,7 @@ class Aptamer_Fold():
                  self.topology_filter()
             self.apt_filter()
             self.find_largest_compatible_sets(self.motifs)
-            self.structures_DB = self.from_motifs_to_DB(self.structures, self.sequence)
-            
+            self.structures_DB = self.from_motifs_to_DB(self.structures, self.sequence)    
             return 
         
     def plot_structures(self, threshold = None):
@@ -245,17 +249,18 @@ class Aptamer_Fold():
         for st in self.structures_DB:
             count_bonds.append(Counter(st)['('])   
         max_bonds = np.max(count_bonds)
-        print(max_bonds)
+        print('Maximal amount of bonds in structure is',max_bonds)
 
         if threshold is not None: 
+            print('Number of computed structures is', len(self.structures) )
             for i, st in enumerate(self.structures_DB):
-                
                 if count_bonds[i] >=  max_bonds - threshold:
                    plt.figure(figsize=(5,5))
                    bg = BulgeGraph.from_dotbracket(st,self.sequence)
                    fvm.plot_rna(bg, text_kwargs={"fontweight":"black"}, lighten=0.7,backbone_kwargs={"linewidth":3})
                    plt.show()
         else: 
+                 print('Number of computed structures is', len(self.structures) )
                  for  st in self.structures_DB:
                
                         plt.figure(figsize=(5,5))
