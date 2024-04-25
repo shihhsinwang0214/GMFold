@@ -6,18 +6,18 @@ import forgi
 from forgi.graph.bulge_graph import BulgeGraph
 
 class Aptamer_Fold():
-    def __init__(self, sequence='ATA', n_tmpl=4, l_fix=4):
+    def __init__(self, sequence='ATA', n_tmpl=4, l_fix=4, structures_DB = None):
         self.l_fix= None # number of fixed base pairs in the 5' 3' bonds.
         self.n_tmpl = None
         self.n_wrld = None
-        self.sequence = None # orginal sequnce in capital letters
+        self.sequence = sequence # orginal sequnce in capital letters
         self.sqnc_num = None # original sequence converted in numbers
         self.B_g = None #matrix  storing all posible bonds between base-pairs
         self.dlt_g  = None #matrix sotring backbone bonds
         self.C_dct = {}#candidate dictionary, storing for each node in the tmpl its associated condadidates in wrld
         self.motifs = []  #list of all tmpl graphs found
         self.structures = None
-        self.structures_DB = None #secondary structures in Dot brachets  notation
+        self.structures_DB =  structures_DB #secondary structures in Dot brachets  notation
      
         
     def init_candidate_dict(self):
@@ -54,7 +54,7 @@ class Aptamer_Fold():
                 if (i <= self.l_fix -1 or j <= self.l_fix-1) and (i + j == self.n_wrld - 1):
                     self.B_g[i, j] = 1
                     self.B_g[j, i] = 1
-                if self.n_wrld - self.l_fix -1 >= i > self.l_fix -1 and self.n_wrld - self.l_fix -1>= j > self.l_fix -1 and self.sqnc_num[i] + self.sqnc_num[j] == 3 and np.abs(i - j) >= self.n_tmpl//2 +1:
+                if self.n_wrld - self.l_fix -1 >= i > self.l_fix -1 and self.n_wrld - self.l_fix -1>= j > self.l_fix -1 and self.sqnc_num[i] + self.sqnc_num[j] == 3 and np.abs(i - j) >= 7:
                     self.B_g[i, j] = 1
                     self.B_g[j, i] = 1
         
@@ -252,7 +252,7 @@ class Aptamer_Fold():
         print('Maximal amount of bonds in structure is',max_bonds)
 
         if threshold is not None: 
-            print('Number of computed structures is', len(self.structures) )
+            print('Number of computed structures is', len(self.structures_DB) )
             for i, st in enumerate(self.structures_DB):
                 if count_bonds[i] >=  max_bonds - threshold:
                    plt.figure(figsize=(5,5))
@@ -260,7 +260,7 @@ class Aptamer_Fold():
                    fvm.plot_rna(bg, text_kwargs={"fontweight":"black"}, lighten=0.7,backbone_kwargs={"linewidth":3})
                    plt.show()
         else: 
-                 print('Number of computed structures is', len(self.structures) )
+                 print('Number of computed structures is', len(self.structures_DB) )
                  for  st in self.structures_DB:
                
                         plt.figure(figsize=(5,5))
