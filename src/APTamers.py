@@ -18,7 +18,8 @@ class Aptamer_Fold():
         self.motifs = []  #list of all tmpl graphs found
         self.structures = None
         self.structures_DB =  structures_DB #secondary structures in Dot brachets  notation
-     
+        self.energies = []
+        self.min_energy_structure_DB = None
         
     def init_candidate_dict(self):
         """
@@ -119,8 +120,6 @@ class Aptamer_Fold():
         Filters candidate vertices based on aptamer criteria.
         """
         nhg_mtf = self.motif_ngh_dct()
-        motifs = []
-        motifs_vect = []
         range_loop = self.C_dct[str(0)].copy()
         range_loop_2 = self.C_dct[str(self.n_tmpl // 2)].copy()
         for i in range_loop[:]:
@@ -155,6 +154,10 @@ class Aptamer_Fold():
 
     
     def compatible(self, motif_1, motif_2):
+            '''
+            defines compatibility between two motifs with the same verteces and edges but different
+            vertex labels
+            '''
             if motif_1[0][0] < motif_2[0][0] and motif_1[-1][1] < motif_2[-1][1]:
                 return False
             if motif_2[0][0] < motif_1[0][0] and motif_2[-1][1] < motif_1[-1][1]:
@@ -170,23 +173,28 @@ class Aptamer_Fold():
             
             
     def find_maximal_sets(self, graph):
-            self.maximal_sets = [[0]]
-            graph_m = {str(0): graph[str(0)]}
-            for i in range(1, len(graph)):
-                flag = 0
-                for j, m in enumerate(self.maximal_sets):
-                    if i in graph_m[str(j)]:
-                        m.append(i)
-                        graph_m[str(j)] = list(set(graph_m[str(j)]) & set(graph[str(i)]))
+            '''
+            given graph with i-th entry associated with list of indeces of motifs
+            compatible to the i-th motif, find the list with maximal compatible motif,
+            excludding overlapping components. Thus find the list with maximal compatible bonds.
+            '''
+            self.maximal_sets = [[0]] # start with list of motifs compatible to the 0-th motif
+            graph_m = {str(0): graph[str(0)]}  # graph storing lists of motifs compatible with all the motifs in the i-th maximal set of motifs ( this case 0-th)
+            for i in range(1, len(graph)): # loop over all motifs skipping the first one
+                flag = 0 
+                for j, m in enumerate(self.maximal_sets): # loop over all lists of maximal sets
+                    if i in graph_m[str(j)]: # if i-th is compatible with all the elements in the j-th maximal set
+                        m.append(i) #add the i-th motif to the j-th maximal set
+                        graph_m[str(j)] = list(set(graph_m[str(j)]) & set(graph[str(i)])) # intersect list of of all motifs compatible with the j-th maximal set with the list of motifs compatile to the i-th motif
                         flag = 1
-                if flag == 0:
-                    new_m = [i]
-                    graph_m[f'{len(self.maximal_sets)}'] = graph[str(i)]
-                    for j in range(i):
-                        if j in graph_m[f'{len(self.maximal_sets)}']:
-                            new_m.append(j)
-                            graph_m[f'{len(self.maximal_sets)}'] = list(set(graph_m[f'{len(self.maximal_sets)}']) & set(graph[str(j)]))
-                    self.maximal_sets.append(new_m)
+                if flag == 0: # in case the i-th motifs does not fit in any maximal set, that is, it is not bcompatible with at list one motiff in each maximal set, create a new maximal set with initialized with the i-th motif 
+                    new_m = [i] 
+                    graph_m[f'{len(self.maximal_sets)}'] = graph[str(i)] # lists of motifs compatible with all the elements in the new maximal set ( at the beginning only with the elements of the i-th motif)
+                    for j in range(i): # loop over all the motifs previously considered and check wethere they fit in the new maximal set
+                        if j in graph_m[f'{len(self.maximal_sets)}']: # if j-th motif is in list of compatible elements of new maximal set
+                            new_m.append(j) # include j-th motif in list of new maximal sets
+                            graph_m[f'{len(self.maximal_sets)}'] = list(set(graph_m[f'{len(self.maximal_sets)}']) & set(graph[str(j)])) # interesect list of motifs compatible to the new maximal set with that of the motifs compatible to the j-th motifs
+                    self.maximal_sets.append(new_m)# add new list, associated with i-th motif,  to the list of lists of maximal set
             return self.maximal_sets    
             
             
@@ -196,7 +204,7 @@ class Aptamer_Fold():
         Finds the largest compatible sets of motifs.
         """
 
-        graph = {str(i): [i] for i in range(len(motifs))}
+        graph = {str(i): [i] for i in range(len(motifs))} # for each motif stores indices of associated compatible motifs
         for i, motifs1 in enumerate(motifs):
             for j, motifs2 in enumerate(motifs[i + 1:], i + 1):
                 if self.compatible(motifs1, motifs2):
@@ -205,11 +213,21 @@ class Aptamer_Fold():
         maximal_sets = self.find_maximal_sets(graph)
         self.structures = []
         for m in maximal_sets:
-            strc = []
+            strc = []  # list of all bonds provided by motifs in maximal set
+            energy = 0  # compute energy associated with given structure by summing the bond energy of bonds in that structure
             for i in m:
                 strc += motifs[i]
-            self.structures.append(list(set(strc)))
-        return self.structures
+            unique_strc = list(set(strc))  # remove duplicates
+            self.structures.append(unique_strc)  
+            #print(len(self.structures))   
+            for j in unique_strc:  # TO DO: adapt to additional type of bonds GA, TG, etc...
+                if j[0] in ['A', 'T']:
+                    energy -= 1.5
+                else:
+                    energy -= 3.6
+            self.energies.append(energy)
+            #print(len(self.energies))   
+        return
             
     def from_motifs_to_DB(self,structures= None, lst= None):
             n_lst = len(lst)
@@ -226,7 +244,7 @@ class Aptamer_Fold():
                     list_strings.append( db_string)    
             return list_strings
             
-    def fit_fold(self,sequence=[] , n_tmpl=4, l_fix=4, filters = False):
+    def fit_fold(self,sequence=[] , n_tmpl=4, l_fix=4, return_min = True, filters = False):
         
             self.l_fix= l_fix # number of fixed base pairs in the 5' 3' bonds.
             self.n_tmpl = n_tmpl
@@ -239,20 +257,40 @@ class Aptamer_Fold():
                  self.stats_filter()
                  self.topology_filter()
             self.apt_filter()
+            
+            if len(self.motifs) == 0:
+                if return_min: # if not motif is found retorun only stem
+                    return '('*self.l_fix + '.'*(self.n_wrld-(self.l_fix*2)) + ')'*self.l_fix
+                else: # if no retrun is requested inform no motif was found
+                    print('secondary structure consists only of given initial stem')
+                    stem = []
+                    for i in range(self.l_fix):
+                        stem.append((i, self.n_wrld-1-i))
+                    self.motifs.append(stem)
+                        
             self.find_largest_compatible_sets(self.motifs)
-            self.structures_DB = self.from_motifs_to_DB(self.structures, self.sequence)    
-            return 
+            #self.structures_DB = self.from_motifs_to_DB(self.structures, self.sequence) 
+            self.min_energy_structure_DB =  self.from_motifs_to_DB([self.structures[np.argmin(self.energies)]], self.sequence)[0]   
+            if return_min:
+                return self.min_energy_structure_DB
+            else:
+                return
         
-    def plot_structures(self, threshold = None):
+    def plot_structures(self, threshold = 'min_energy'):
+        print('Number of computed structures is', len(self.structures) )
+        if threshold == 'min_energy':
+                   print('Free energy', np.min(self.energies))
+                   plt.figure(figsize=(5,5))
+                   bg = BulgeGraph.from_dotbracket(self.min_energy_structure_DB,self.sequence)
+                   fvm.plot_rna(bg, text_kwargs={"fontweight":"black"}, lighten=0.7,backbone_kwargs={"linewidth":3})
+                   plt.show()
         
-        count_bonds  = []
-        for st in self.structures_DB:
-            count_bonds.append(Counter(st)['('])   
-        max_bonds = np.max(count_bonds)
-        print('Maximal amount of bonds in structure is',max_bonds)
-
-        if threshold is not None: 
-            print('Number of computed structures is', len(self.structures_DB) )
+        elif threshold.isdigit(): 
+            self.structures_DB = self.from_motifs_to_DB(self.structures, self.sequence) 
+            count_bonds  = []
+            for st in self.structures_DB:
+                count_bonds.append(Counter(st)['('])   
+            max_bonds = np.max(count_bonds)
             for i, st in enumerate(self.structures_DB):
                 if count_bonds[i] >=  max_bonds - threshold:
                    plt.figure(figsize=(5,5))
@@ -260,9 +298,8 @@ class Aptamer_Fold():
                    fvm.plot_rna(bg, text_kwargs={"fontweight":"black"}, lighten=0.7,backbone_kwargs={"linewidth":3})
                    plt.show()
         else: 
-                 print('Number of computed structures is', len(self.structures_DB) )
-                 for  st in self.structures_DB:
-               
+                self.structures_DB = self.from_motifs_to_DB(self.structures, self.sequence) 
+                for  st in self.structures_DB:
                         plt.figure(figsize=(5,5))
                         bg = BulgeGraph.from_dotbracket(st,self.sequence)
                         fvm.plot_rna(bg, text_kwargs={"fontweight":"black"}, lighten=0.7,backbone_kwargs={"linewidth":3})
