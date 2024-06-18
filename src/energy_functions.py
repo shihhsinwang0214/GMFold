@@ -92,8 +92,8 @@ def _hairpin(seq: str, i: int, j: int, temp: float, emap: Energies) -> float:
         float: The free energy increment from the hairpin structure
     """
 
-    if np.abs(j - i) < 4:
-        return np.inf
+    #if np.abs(j - i) < 4:
+      #  return np.inf
 
     hairpin = seq[i : j + 1]
     hairpin_len = len(hairpin) - 2
@@ -277,7 +277,11 @@ def _internal_loop(seq: str, i: int, i1: int, j: int, j1: int, temp: float, emap
     if loop_left == 1 and loop_right == 1:
         mm_left = _stack(seq, i, i1, j, j1, temp, emap)
         mm_right = _stack(seq, i1 - 1, i1, j1 + 1, j1, temp, emap)
-        return mm_left + mm_right
+        
+        if  emap.COMPLEMENT[seq[i+1]]  == seq[j-1]:#MODIFICATION to avoid inner loops  with one bp that matches
+                return 1600
+        else:
+            return mm_left + mm_right
 
     # apply a penalty based on loop size
     if loop_len in emap.INTERNAL_LOOPS:
@@ -293,14 +297,18 @@ def _internal_loop(seq: str, i: int, i1: int, j: int, j1: int, temp: float, emap
     loop_asymmetry = abs(loop_left - loop_right)
     d_g += 0.3 * loop_asymmetry
 
-    # apply penalty based on the mismatching pairs on either side of the loop
+    # apply penalty based on the mismatching pairs on either side of the loop 
     pair_left_mm = _pair(seq, i, i + 1, j, j - 1)
+
     d_h, d_s = emap.TERMINAL_MM[pair_left_mm]
     d_g += _d_g(d_h, d_s, temp)
 
     pair_right_mm = _pair(seq, i1 - 1, i1, j1 + 1, j1)
-    d_h, d_s = emap.TERMINAL_MM[pair_right_mm]
-    d_g += _d_g(d_h, d_s, temp)
+    if pair_right_mm not in  emap.TERMINAL_MM:
+        return np.inf
+    else:   
+        d_h, d_s = emap.TERMINAL_MM[pair_right_mm]
+        d_g += _d_g(d_h, d_s, temp)
 
     return d_g
 
