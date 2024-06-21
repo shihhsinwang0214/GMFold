@@ -336,24 +336,31 @@ def _v(
     e3 = STRUCT_NULL
     
     if not isolated_outer or not i or j == len(seq) - 1:
-        branches = list(set(S[key]).intersection(set(revisited)))# - set(non_maximal))
+        branches = list(set(S[key]).intersection(set(revisited)) - set(non_maximal))
+        #if i== 7 and j == 44:
+         #   print(branches)
+            
         if len(branches)>=2:
             combos =all_combinations(branches)
             for combo in combos:
+                    #if i== 7 and j == 44:
+                     #   print(combo)
                     e3_test = my_multi_branch(seq, i, j, temp, v_cache, emap, S, revisited,non_maximal, combo)
+                    #if i== 7 and j == 44:
+                     #   print(e3_test.e)
                     if e3_test and e3_test.e < e3.e:
                             e3 = e3_test
                     
     
-                            
+                         
     e = _min_struct(e1, e2, e3) 
     if  (i and j < len(seq) - 1) and  emap.COMPLEMENT[seq[i - 1]] != seq[j + 1] and emap.COMPLEMENT[seq[i + 1]] == seq[j - 1]  :
         revisited.append((i,j))
     for bp_min in set(S[key]).intersection(set(revisited)):
         if v_cache[bp_min[0]][bp_min[1]].e < e.e:
             non_maximal.append((i,j))
-        else:
-            non_maximal.append((bp_min[0], bp_min[1]))
+        #else:
+          #  non_maximal.append((bp_min[0], bp_min[1]))
     v_cache[i][j] = e
      
     return e
@@ -787,7 +794,7 @@ def my_multi_branch(
         assert unpaired_right >= 0
 
         if (i2, j2) != (i, j):  # add energy
-            e_sum += _v(seq, i2, j2, temp, v_cache, emap, S, revisited, non_maximal).e
+            e_sum += v_cache[i2][j2].e#_v(seq, i2, j2, temp, v_cache, emap, S, revisited, non_maximal).e
 
     assert unpaired >= 0
 
@@ -987,8 +994,7 @@ def my_traceback(i: int, j: int, v_cache: Structs) -> List[Struct]:
             continue
         
         # it's a multibranch
-        e_sum = 0.0
-        structs = _trackback_energy(structs)
+        
         
         e_sum = 0.0
         structs = _trackback_energy(structs)
@@ -996,8 +1002,8 @@ def my_traceback(i: int, j: int, v_cache: Structs) -> List[Struct]:
         for i1, j1 in s.ij:
             tb = my_traceback(i1, j1, v_cache)
             if tb and tb[0].ij:
-                i2, j2 = tb[0].ij[0]
-                e_sum += v_cache[i2][j2].e
+                #i2, j2 = tb[0].ij[0]
+                e_sum += v_cache[i1][j1].e
                 branches += tb
         
         last = structs[-1]
