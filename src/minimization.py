@@ -1,11 +1,11 @@
 """Predict nucleic acid secondary structure"""
 import sys
-sys.path.append(r'C:\Users\clima\Desktop\Aptamers/my_seqfold')
+#sys.path.append(r'C:\Users\clima\Desktop\Aptamers/my_seqfold')
 import math
 from typing import List, Tuple
 import numpy as np
 from dna import DNA_ENERGIES
-from rna import RNA_ENERGIES
+
 sys.path.append(r'C:\Users\clima\Desktop\Aptamers\src')
 from Types import Energies, Cache
 from APTamers import  Aptamer_Fold
@@ -336,31 +336,36 @@ def _v(
     e3 = STRUCT_NULL
     
     if not isolated_outer or not i or j == len(seq) - 1:
-        branches = list(set(S[key]).intersection(set(revisited)) - set(non_maximal))
+        branches = list( set(S[key]) -set(non_maximal))
         #if i== 7 and j == 44:
          #   print(branches)
             
         if len(branches)>=2:
             combos =all_combinations(branches)
+            #if i== 7 and j == 41:
+                #print('BRAN',branches)
+                #print(v_cache[8][23], v_cache[9][22])
             for combo in combos:
-                    #if i== 7 and j == 44:
-                     #   print(combo)
+                    #if i== 7 and j == 41:
+                      #  print(combo)
                     e3_test = my_multi_branch(seq, i, j, temp, v_cache, emap, S, revisited,non_maximal, combo)
-                    #if i== 7 and j == 44:
-                     #   print(e3_test.e)
+                    #if i== 7 and j == 41:
+                        #print(e3_test.e)
                     if e3_test and e3_test.e < e3.e:
                             e3 = e3_test
                     
     
                          
     e = _min_struct(e1, e2, e3) 
-    if  (i and j < len(seq) - 1) and  emap.COMPLEMENT[seq[i - 1]] != seq[j + 1] and emap.COMPLEMENT[seq[i + 1]] == seq[j - 1]  :
+    if  (i and j < len(seq) - 1) and   emap.COMPLEMENT[seq[i - 1]] != seq[j + 1]:# and  emap.COMPLEMENT[seq[i + 1]] == seq[j - 1]:
         revisited.append((i,j))
     for bp_min in set(S[key]).intersection(set(revisited)):
         if v_cache[bp_min[0]][bp_min[1]].e < e.e:
             non_maximal.append((i,j))
-        #else:
-          #  non_maximal.append((bp_min[0], bp_min[1]))
+        else:
+          # r_key = '({}, {})'.format(*(bp_min[0], bp_min[1]))
+           non_maximal.append((bp_min[0], bp_min[1]))
+          # non_maximal.extend(list(set(S[r_key])))
     v_cache[i][j] = e
      
     return e
@@ -814,145 +819,6 @@ def my_multi_branch(
 
     return Struct(e, f"BIFURCATION:{str(unpaired)}n/{str(branches_count)}h", branches)
 
-def _multi_branch(
-    seq: str,
-    i: int,
-    k: int,
-    j: int,
-    temp: float,
-    v_cache: Structs,
-    w_cache: Structs,
-    emap: Energies,
-    helix: bool = False,
-) -> Struct:
-    """Calculate a multi-branch energy penalty using a linear formula.
-
-    From Jaeger, Turner, and Zuker, 1989.
-    Found to be better than logarithmic in Ward, et al. 2017
-
-    Args:
-        seq: The sequence being folded
-        i: The left starting index
-        k: The mid-point in the search
-        j: The right ending index
-        temp: Folding temp
-        v_cache: Structs of energies where V(i,j) bond
-        w_cache: Structs of min energy of substructures between W(i,j)
-        helix: Whether this multibranch is enclosed by a helix
-        emap: Map to DNA/RNA energies
-
-    Keyword Args:
-        helix: Whether V(i, j) bond with one another in a helix
-
-    Returns:
-        Struct: A multi-branch structure
-    """
-
-    if helix:
-        left = _w(seq, i + 1, k, temp, v_cache, w_cache, emap)
-        right = _w(seq, k + 1, j - 1, temp, v_cache, w_cache, emap)
-    else:
-        left = _w(seq, i, k, temp, v_cache, w_cache, emap)
-        right = _w(seq, k + 1, j, temp, v_cache, w_cache, emap)
-
-    if not left or not right:
-        return STRUCT_NULL
-
-    # gather all branches of this multi-branch structure
-    branches: List[Tuple[int, int]] = []
-
-    def add_branch(s: Struct):
-        if not s or not s.ij:
-            return
-        if len(s.ij) == 1:
-            branches.append(s.ij[0])
-            return
-        for i1, j1 in s.ij:
-            add_branch(_w(seq, i1, j1, temp, v_cache, w_cache, emap))
-
-    add_branch(left)
-    add_branch(right)
-
-    # this isn't multi-branched
-    if len(branches) < 2:
-        return STRUCT_NULL
-
-    # if there's a helix, i,j counts as well
-    if helix:
-        branches.append((i, j))
-
-    # count up unpaired bp and asymmetry
-    branches_count = len(branches)
-    unpaired = 0
-    e_sum = 0.0
-    for index, (i2, j2) in enumerate(branches):
-        _, j1 = branches[(index - 1) % len(branches)]
-        i3, j3 = branches[(index + 1) % len(branches)]
-
-        # add energy from unpaired bp to the right
-        # of the helix as though it was a dangling end
-        # if there's only one bp, it goes to whichever
-        # helix (this or the next) has the more favorable energy
-        unpaired_left = 0
-        unpaired_right = 0
-        de = 0.0
-        if index == len(branches) - 1 and not helix:
-            pass
-        elif (i3, j3) == (i, j):
-            unpaired_left = i2 - j1 - 1
-            unpaired_right = j3 - j2 - 1
-
-            if unpaired_left and unpaired_right:
-                de = _stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap)
-            elif unpaired_right:
-                de = _stack(seq, -1, i2, j2 + 1, j2, temp, emap)
-                if unpaired_right == 1:
-                    de = min(_stack(seq, i3, -1, j3, j3 - 1, temp, emap), de)
-        elif (i2, j2) == (i, j):
-            unpaired_left = j2 - j1 - 1
-            unpaired_right = i3 - i2 - 1
-
-            if unpaired_left and unpaired_right:
-                de = _stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap)
-            elif unpaired_right:
-                de = _stack(seq, i2, i2 + 1, j2, -1, temp, emap)
-                if unpaired_right == 1:
-                    de = min(_stack(seq, i3 - 1, i3, -1, j3, temp, emap), de)
-        else:
-            unpaired_left = i2 - j1 - 1
-            unpaired_right = i3 - j2 - 1
-
-            if unpaired_left and unpaired_right:
-                de = _stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap)
-            elif unpaired_right:
-                de = _stack(seq, -1, i2, j2 + 1, j2, temp, emap)
-                if unpaired_right == 1:
-                    de = min(_stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap), de)
-
-        e_sum += de
-        unpaired += unpaired_right
-        assert unpaired_right >= 0
-
-        if (i2, j2) != (i, j):  # add energy
-            e_sum += _w(seq, i2, j2, temp, v_cache, w_cache, emap).e
-
-    assert unpaired >= 0
-
-    # penalty for unmatched bp and multi-branch
-    a, b, c, d = emap.MULTIBRANCH
-    e_multibranch = a + b * len(branches) + c * unpaired
-
-    if unpaired == 0:
-        e_multibranch = a + d
-
-    # energy of min-energy neighbors
-    e = e_multibranch + e_sum
-
-    # pointer to next structures
-    if helix:
-        branches.pop()
-
-    return Struct(e, f"BIFURCATION:{str(unpaired)}n/{str(branches_count)}h", branches)
 
 def my_traceback(i: int, j: int, v_cache: Structs) -> List[Struct]:
     """Traceback thru the V(i,j) and W(i,j) caches to find the structure
@@ -1011,67 +877,6 @@ def my_traceback(i: int, j: int, v_cache: Structs) -> List[Struct]:
         return structs + branches
 
     return _trackback_energy(structs)
-
-def _traceback(i: int, j: int, v_cache: Structs, w_cache: Structs) -> List[Struct]:
-    """Traceback thru the V(i,j) and W(i,j) caches to find the structure
-
-    For each step, get to the lowest energy W(i,j) within that block
-    Store the structure in W(i,j)
-    Inc i and j
-    If the next structure is viable according to V(i,j), store as well
-    Repeat
-
-    Args:
-        i: The leftmost index to start searching in
-        j: The rightmost index to start searching in
-        v_cache: Energies where i and j bond
-        w_cache: Energies/sub-structures between or with i and j
-
-    Returns:
-        A list of Structs in the final secondary structure
-    """
-
-    # move i,j down-left to start coordinates
-    s = w_cache[i][j]
-    if "HAIRPIN" not in s.desc:
-        while w_cache[i + 1][j] == s:
-            i += 1
-        while w_cache[i][j - 1] == s:
-            j -= 1
-
-    structs: List[Struct] = []
-    while True:
-        s = v_cache[i][j]
-        structs.append(s.with_ij([(i, j)]))
-
-        # it's a hairpin, end of structure
-        if not s.ij:
-            # set the energy of everything relative to the hairpin
-            return _trackback_energy(structs)
-
-        # it's a stack, bulge, etc
-        # there's another single structure beyond this
-        if len(s.ij) == 1:
-            i, j = s.ij[0]
-            continue
-        ''''''
-        # it's a multibranch
-        e_sum = 0.0
-        structs = _trackback_energy(structs)
-        branches: List[Struct] = []
-        for i1, j1 in s.ij:
-            tb = _traceback(i1, j1, v_cache, w_cache)
-            if tb and tb[0].ij:
-                i2, j2 = tb[0].ij[0]
-                e_sum += w_cache[i2][j2].e
-                branches += tb
-
-        last = structs[-1]
-        structs[-1] = Struct(round(last.e - e_sum, 1), last.desc, list(last.ij))
-        return structs + branches
-
-    return _trackback_energy(structs)
-
 
 def _trackback_energy(structs: List[Struct]) -> List[Struct]:
     """Add energy to each structure, based on how it's W(i,j) differs from the one after
