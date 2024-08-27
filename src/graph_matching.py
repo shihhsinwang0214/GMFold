@@ -11,8 +11,10 @@ import copy
 
 
 class Aptamer_match():
-    def __init__(self, sequence='ATA', n_tmpl=4, l_fix=0):
-        self.l_fix= None # number of fixed base pairs in the 5' 3' bonds.
+    """Class function to solve graph matching problem 
+    """
+    def __init__(self, sequence='ATA', n_tmpl=4):
+        self.l_fix= None # number of fixed base pairs in the initial stem.
         self.n_tmpl =  n_tmpl
         self.n_wrld = None
         self.sequence = sequence # orginal sequnce in capital letters
@@ -59,8 +61,8 @@ class Aptamer_match():
             Filters candidate vertices based on aptamer criteria.
             """
             for i in range(self.n_wrld):
-                if self.l_fix - 2 <= i <= self.n_wrld - self.l_fix +1:
-                        for j in range(i + self.n_tmpl//2 +1,self.n_wrld-self.n_tmpl // 2):
+                if self.l_fix - 2 <= i <= self.n_wrld - self.l_fix :
+                        for j in range(i + self.n_tmpl//2 +1,self.n_wrld-self.n_tmpl // 2 +1):
                             if  j <= self.n_wrld - self.l_fix -1:
                                 if (np.all(np.diag(self.B_g[list(range(i, i + self.n_tmpl // 2))][:, list(range(j + self.n_tmpl // 2 - 1, j - 1, -1))]) == np.ones(self.n_tmpl // 2, dtype=int))):                   
                                     self.motifs.append([(i + k, j + self.n_tmpl // 2 - 1 - k) for k in range(self.n_tmpl // 2)])   
@@ -68,9 +70,7 @@ class Aptamer_match():
 
     
     def create_dict_d(self,):
-        '''
-        for each possible length d = j- i, with (i,j) bp, store al bp with length d in the respective entry of the dictionary
-        
+        '''Create dictionary containing for each possible length d = |i-j| all base pairs with length d identified solving the subgraph matching problem
         '''
         self.dict_d = {}
         
@@ -85,20 +85,20 @@ class Aptamer_match():
         return  
     
     def create_dict_Sij(self, ):
-        
+        '''Create a dictionary containing for each base pair (i,j),
+            identified by solving the graph matching problem, all possible base pairs (i',j') such that i<i'<j'<j.
+        '''
         self.dict_Sij = {}
 
         for count, bp1 in enumerate(self.bps):
                 if '({}, {})'.format(*bp1) not in list(self.dict_Sij.keys()):
                     self.dict_Sij[str(bp1)]  =[]
                 for bp2 in self.bps[count+1:]:
-                    
                     if bp1[0]<bp2[0]<bp2[1]<bp1[1]:
                         try:
                             self.dict_Sij[str(bp1)].append(bp2)
                             
                         except KeyError:
-                            
                             self.dict_Sij[str(bp1)]  =[]
                             self.dict_Sij[str(bp1)].append(bp2)
                             
@@ -106,36 +106,43 @@ class Aptamer_match():
                         try:
                             self.dict_Sij[str(bp2)].append(bp1)
                             
-                        except KeyError:
-                            
+                        except KeyError:  
                             self.dict_Sij[str(bp2)]  =[]
                             self.dict_Sij[str(bp2)].append(bp1)
         return  
 
     
     def fit_fold(self,sequence=[] , n_tmpl=4, l_fix=0):
-        
-            self.l_fix= l_fix # number of fixed base pairs in the 5' 3' bonds.
-            self.n_tmpl = n_tmpl
-            self.n_wrld = len(sequence)
+            ''' Solve subgraph matching problem
+            Args:
+                seq: the sequence to fold
+                n_tmpl: length template for subgraph matching. Default is 4
+                l_fix =  number of fixed base pairs in the initial stem. Default is 0.
+            '''
+            self.l_fix= l_fix # number of fixed base pairs 
+            self.n_tmpl = n_tmpl # lenght template 
+            self.n_wrld = len(sequence) # length sequence
             self.sequence = sequence # orginal sequnce in capital letters
-            self.convert_sequence_to_numeric()
+            self.convert_sequence_to_numeric() 
             self.build_BG_matrix()
             self.apt_filter()                
             self.bps = set([])
             
+            #Store base pairs found solving the graph matching problem
             for mot in self.motifs:
                 for bp in mot:
                     self.bps.add(bp)
                     
             
-            # Include initial stem             
+            # Include initial stem in base pair list        
             if l_fix >0:
                 for k in range(l_fix):
                     self.bps.add((k, self.n_wrld-1-k))                
         
             self.bps = list(self.bps) 
+            # Organize base pairs in dictionary based on their length
             self.create_dict_d()
+            # Organize base pairs in dictionary. For each base pair find all base pairs included in it.
             self.create_dict_Sij()    
         
 

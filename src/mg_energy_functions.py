@@ -371,7 +371,7 @@ def mg_multi_branch(
     i: int,
     j: int,
     temp: float,
-    v_cache: Structs,
+    e_cache: Structs,
     emap: Energies,
     S = None, 
     branches = None,
@@ -389,7 +389,7 @@ def mg_multi_branch(
         k: The mid-point in the search
         j: The right ending index
         temp: Folding temp
-        v_cache: Structs of energies where V(i,j) bond
+        e_cache: Structs of energies where V(i,j) bond
         w_cache: Structs of min energy of substructures between W(i,j)
         helix: Whether this multibranch is enclosed by a helix
         emap: Map to DNA/RNA energies
@@ -464,7 +464,7 @@ def mg_multi_branch(
         assert unpaired_right >= 0
 
         if (i2, j2) != (i, j): 
-                e_sum += v_cache[i2][j2].e
+                e_sum += e_cache[i2][j2].e
             
 
     assert unpaired >= 0
@@ -494,7 +494,7 @@ def open_ending_branch(
     i: int,
     j: int,
     temp: float,
-    v_cache: Structs,
+    e_cache: Structs,
     emap: Energies,
     S = None, 
     branches = None,
@@ -510,7 +510,7 @@ def open_ending_branch(
         k: The mid-point in the search
         j: The right ending index
         temp: Folding temp
-        v_cache: Structs of energies where V(i,j) bond
+        e_cache: Structs of energies where V(i,j) bond
         w_cache: Structs of min energy of substructures between W(i,j)
         helix: Whether this multibranch is enclosed by a helix
         emap: Map to DNA/RNA energies
@@ -529,7 +529,7 @@ def open_ending_branch(
 
     e = 0.0
     for bp in branches:
-        e += v_cache[bp[0]][bp[1]].e
+        e += e_cache[bp[0]][bp[1]].e
     
 
     return Struct(e, f"OPEN_ENDING_MULTI_BRANCH:{str(len(branches))}h", branches)
