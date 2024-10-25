@@ -2,6 +2,7 @@
 This script includes code sourced from the following open-source repository:
 Repository: https://github.com/Lattice-Automation/seqfold
 License: MIT License
+Accessed: 20 July 2024.
 """
 
 from typing import Dict, Optional, Tuple, Union, List

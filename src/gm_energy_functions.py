@@ -2,6 +2,7 @@
 This script includes face energy functions sourced from the following open-source GitHub repository:
 Repository: https://github.com/Lattice-Automation/seqfold
 License: MIT License
+Accessed: 20 July 2024.
 
 Specific functions of the code that were adapted from the above repository: _internal_loop, gm_multi_branch
 """

@@ -35,6 +35,9 @@ Contact climaco@ins.uni-bonn for questions about code and data.
 |    ├── GMfold.py                      # Main script for DNA folding using graph matching methods: Implementation of MGfold
 |    ├── graph_matching.py              # Script for performing graph matching on DNA structures
 |    ├── seqfold2_0.py                  # Script implementing the SeqFold 2.0 algorithm for DNA sequence folding
+|    ├── seqfold_accessed_07_24/        # Folder with version of SeqFold (version 0.7.17) on which we based our code (Accesed on July 2024)
+|           ├── fold_accessed_07_24     # Script implementing Seqfold (version 0.7.17)
+            ├── LICENCE_seqfold         # Text file including seqfold licence agreement
 |    ├── Types.py                       # Script defining custom data types for DNA folding operations
 |    ├── utils.py                       # Utility script with helper functions used across DNA folding workflows
 

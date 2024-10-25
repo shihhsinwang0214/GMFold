@@ -1,23 +1,35 @@
-"""Python implementation of Seqfold 2.0 to predict secondary structure of single-stranded DNA sequences
+'''
+MIT License
 
-This script is based on the orginial Seqfold code from the following open-source repository:
-Repository: https://github.com/Lattice-Automation/seqfold
-License: MIT License
-Accessed: 20 July 2024.
+Copyright (c) 2019 Lattice Automation
 
-Specific functions of the code that were adapted from the above repository: _internal_loop, gm_multi_branch fold_2, _cache, _v, _internal_loop and _multi_branch
-"""
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-import math
-import sys
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+'''
+
+"""Predict nucleic acid secondary structure"""
+
 import math
 from typing import List, Tuple
-import numpy as np
-from dna import DNA_ENERGIES
-sys.path.append(r'.\src')
-from Types import Energies, Cache
-from graph_matching import  Aptamer_match
 
+from .dna import DNA_ENERGIES
+from .rna import RNA_ENERGIES
+from .types import Energies, Cache
 
 
 class Struct:
@@ -56,7 +68,7 @@ Structs = List[List[Struct]]
 """A map from i, j tuple to a min free energy Struct."""
 
 
-def fold_2(seq: str, temp: float = 37.0) -> List[Struct]:
+def fold(seq: str, temp: float = 37.0) -> List[Struct]:
     """Fold the DNA sequence and return the lowest free energy score.
 
     Based on the approach described in:
@@ -70,39 +82,59 @@ def fold_2(seq: str, temp: float = 37.0) -> List[Struct]:
 
     Args:
         seq: The sequence to fold
+
+    Keyword Args:
         temp: The temperature the fold takes place in, in Celcius
 
     Returns:
         List[Struct]: A list of structures. Stacks, bulges, hairpins, etc.
     """
-     # Solve graph matching problem
-    APT = Aptamer_match()
-    APT.fit_fold( sequence=seq ,  n_tmpl=4, l_fix= 0 )
-    S = APT.dict_Sij
-    
-    v_cache, w_cache = _cache(seq, temp, S)
+
+    v_cache, w_cache = _cache(seq, temp)
     n = len(seq)
-   
-    #print(w_cache[4][41])
-    #print(w_cache[23][39])
+
     # get the minimum free energy structure out of the cache
-    return _traceback(0, n-1, v_cache, w_cache)
+    return _traceback(0, n - 1, v_cache, w_cache)
+
 
 def dg(seq: str, temp: float = 37.0) -> float:
     """Fold the sequence and return just the delta G of the structure
 
     Args:
         seq: The sequence to fold
+
+    Keyword Args:
         temp: The temperature to fold at
 
     Returns:
         float: The minimum free energy of the folded sequence
     """
 
-    structs = fold_2(seq, temp)
+    structs = fold(seq, temp)
     return round(sum(s.e for s in structs), 2)
 
 
+def dg_cache(seq: str, temp: float = 37.0) -> Cache:
+    """Fold a nucleic acid sequence and return the estimated dg of each (i,j) pairing.
+
+    Args:
+        seq: The nucleic acid sequence to fold
+
+    Keyword Args:
+        temp: The temperature to fold at
+
+    Returns:
+        Cache: A 2D matrix where each (i, j) pairing corresponds to the
+            minimum free energy between i and j
+    """
+
+    _, w_cache = _cache(seq, temp)
+
+    cache: Cache = []
+    for row in w_cache:
+        cache.append([s.e for s in row])
+
+    return cache
 
 
 def dot_bracket(seq: str, structs: List[Struct]) -> str:
@@ -125,7 +157,7 @@ def dot_bracket(seq: str, structs: List[Struct]) -> str:
     return "".join(result)
 
 
-def _cache(seq: str, temp: float = 37.0, S = None) -> Tuple[Structs, Structs]:
+def _cache(seq: str, temp: float = 37.0) -> Tuple[Structs, Structs]:
     """Create caches for the w_cache and v_cache
 
     The Structs is useful for gathering many possible energies
@@ -133,8 +165,9 @@ def _cache(seq: str, temp: float = 37.0, S = None) -> Tuple[Structs, Structs]:
 
     Args:
         seq: The sequence to fold
+
+    Keyword Args:
         temp: The temperature to fold at
-        S: dictionary containing, for each base pair (i,j) identified solving the subgraph matching problem, all possible base pairs (i',j') such that i<i'<j'<j.
 
     Returns:
         (Structs, Structs): The w_cache and the v_cache for traversal later
@@ -159,8 +192,8 @@ def _cache(seq: str, temp: float = 37.0, S = None) -> Tuple[Structs, Structs]:
     elif any(bp not in "ATGC" for bp in bps):
         diff = [bp for bp in bps if bp not in "ATUGC"]
         raise RuntimeError(f"Unknown bp: {diff}. Only DNA/RNA foldable")
-    emap = DNA_ENERGIES 
-    min_ene = np.inf
+    emap = DNA_ENERGIES if dna else RNA_ENERGIES
+
     n = len(seq)
     v_cache: Structs = []
     w_cache: Structs = []
@@ -168,34 +201,58 @@ def _cache(seq: str, temp: float = 37.0, S = None) -> Tuple[Structs, Structs]:
         v_cache.append([STRUCT_DEFAULT] * n)
         w_cache.append([STRUCT_DEFAULT] * n)
 
-    # fill v_cache following to specific order
-    for d in range(1, n):
-        for i in range(n - d-3):  
-                    j = i + d+ 3
-                    if j - i < 4:
-                        w_cache[i][j] = STRUCT_NULL
-                        v_cache[i][j]= STRUCT_NULL
-                        
-                    else:
-                        v_cache[i][j] = _v(seq, i, j, temp, v_cache, w_cache, emap, S)
-                        if v_cache[i][j].e <= min_ene:
-                                min_ene = v_cache[i][j].e
-                                w_cache[i][j] = v_cache[i][j]
-                
-                        if w_cache[i][j] == STRUCT_DEFAULT :
-                            E3 = v_cache[i][j] 
-                            E1 = w_cache[i+1][j]
-                            E2 = w_cache[i][j-1]
-                            E4 = STRUCT_NULL
-                            for k in range(i + 2, j-2 ):
-                                    E4_test = _multi_branch(seq, i, k, j, temp, v_cache, w_cache, emap, False)
-                                    if E4_test and E4_test.e < E4.e:
-                                        E4 = E4_test
-                            
-                            w_cache[i][j]   = _min_struct(E1, E2, E3, E4)
-                            if w_cache[i][j].e < min_ene:
-                                min_ene = w_cache[i][j].e
+    # fill the cache
+    _w(seq, 0, n - 1, temp, v_cache, w_cache, emap)
+
     return v_cache, w_cache
+
+
+def _w(
+    seq: str,
+    i: int,
+    j: int,
+    temp: float,
+    v_cache: Structs,
+    w_cache: Structs,
+    emap: Energies,
+) -> Struct:
+    """Find and return the lowest free energy structure in Sij subsequence
+
+    Figure 2B in Zuker and Stiegler, 1981
+
+    Args:
+        seq: The sequence being folded
+        i: The start index
+        j: The end index (inclusive)
+        temp: The temperature in Kelvin
+        v_cache: Free energy cache for if i and j bp
+        w_cache: Free energy cache for lowest energy structure from i to j. 0 otherwise
+
+    Returns:
+        float: The free energy for the subsequence from i to j
+    """
+
+    if w_cache[i][j] != STRUCT_DEFAULT:
+        return w_cache[i][j]
+
+    if j - i < 4:
+        w_cache[i][j] = STRUCT_NULL
+        return w_cache[i][j]
+
+    w1 = _w(seq, i + 1, j, temp, v_cache, w_cache, emap)
+    w2 = _w(seq, i, j - 1, temp, v_cache, w_cache, emap)
+    w3 = _v(seq, i, j, temp, v_cache, w_cache, emap)
+
+    w4 = STRUCT_NULL
+    for k in range(i + 1, j - 1):
+        w4_test = _multi_branch(seq, i, k, j, temp, v_cache, w_cache, emap, False)
+
+        if w4_test and w4_test.e < w4.e:
+            w4 = w4_test
+
+    w = _min_struct(w1, w2, w3, w4)
+    w_cache[i][j] = w
+    return w
 
 
 def _v(
@@ -206,7 +263,6 @@ def _v(
     v_cache: Structs,
     w_cache: Structs,
     emap: Energies,
-    S= None
 ) -> Struct:
     """Find, store and return the minimum free energy of the structure between i and j
 
@@ -220,8 +276,7 @@ def _v(
         temp: The temperature in Kelvin
         v_cache: Free energy cache for if i and j bp. INF otherwise
         w_cache: Free energy cache for lowest energy structure from i to j. 0 otherwise
-        emap: Energy map for DNA
-        S: dictionary containing, for each base pair (i,j) identified solving the subgraph matching problem, all possible base pairs (i',j') such that i<i'<j'<j.
+        emap: Energy map for DNA/RNA
 
     Returns:
         float: The minimum energy folding structure possible between i and j on seq
@@ -240,10 +295,7 @@ def _v(
     isolated_outer = True
     if i and j < len(seq) - 1:
         isolated_outer = emap.COMPLEMENT[seq[i - 1]] != seq[j + 1]
-    if j-1-i-1 <4:
-        isolated_inner = True
-    else:
-        isolated_inner = emap.COMPLEMENT[seq[i + 1]] != seq[j - 1]
+    isolated_inner = emap.COMPLEMENT[seq[i + 1]] != seq[j - 1]
 
     if isolated_outer and isolated_inner:
         v_cache[i][j] = Struct(1600)
@@ -262,10 +314,9 @@ def _v(
     # j-i=d>4; various pairs i',j' for j'-i'<d
     n = len(seq)
     e2 = Struct(math.inf)
-    key = '({}, {})'.format(*(i,j))
-    for bp in S[key]:
-            i1 = bp[0]
-            j1 = bp[1]
+    for i1 in range(i + 1, j - 4):
+        for j1 in range(i1 + 4, j):
+            # i1 and j1 must match
             if emap.COMPLEMENT[seq[i1]] != seq[j1]:
                 continue
 
@@ -310,17 +361,19 @@ def _v(
                 continue
 
             # add V(i', j')
-            e2_test += v_cache[i1][j1].e
+            e2_test += _v(seq, i1, j1, temp, v_cache, w_cache, emap).e
             if e2_test != -math.inf and e2_test < e2.e:
                 e2 = Struct(e2_test, e2_test_type, [(i1, j1)])
 
     # E3 = min{W(i+1,i') + W(i'+1,j-1)}, i+1<i'<j-2
     e3 = STRUCT_NULL
     if not isolated_outer or not i or j == len(seq) - 1:
-        for k in range(i + 2, j - 1):
+        for k in range(i + 1, j - 1):
             e3_test = _multi_branch(seq, i, k, j, temp, v_cache, w_cache, emap, True)
+
             if e3_test and e3_test.e < e3.e:
                 e3 = e3_test
+
     e = _min_struct(e1, e2, e3)
     v_cache[i][j] = e
     return e
@@ -406,6 +459,15 @@ def _stack(
     seq: str, i: int, i1: int, j: int, j1: int, temp: float, emap: Energies
 ) -> float:
     """Get the free energy for a stack.
+
+    Using the indexes i and j, check whether it's at the end of
+    the sequence or internal. Then check whether it's a match
+    or mismatch, and return.
+
+    Two edge-cases are terminal mismatches and dangling ends.
+    The energy of a dangling end is added to the energy of a pair
+    where i XOR j is at the sequence's end.
+
     Args:
         seq: The full folding sequence
         i: The start index on left side of the pair/stack
@@ -597,18 +659,11 @@ def _internal_loop(
         raise RuntimeError
 
     # single bp mismatch, sum up the two single mismatch pairs
-        
-    if loop_left == 1 and loop_right == 1:
-        mm_left = _stack(seq, i, i1-1, j, j1+1, temp, emap)
-        mm_right = _stack(seq, i1 - 1, i1, j1 + 1, j1, temp, emap)
-        return mm_left + mm_right
-    '''
-    wrong computation from the original version
     if loop_left == 1 and loop_right == 1:
         mm_left = _stack(seq, i, i1, j, j1, temp, emap)
         mm_right = _stack(seq, i1 - 1, i1, j1 + 1, j1, temp, emap)
         return mm_left + mm_right
-    '''
+
     # apply a penalty based on loop size
     if loop_len in emap.INTERNAL_LOOPS:
         d_h, d_s = emap.INTERNAL_LOOPS[loop_len]
@@ -670,13 +725,15 @@ def _multi_branch(
     """
 
     if helix:
-        left = w_cache[i+1][k]
-        right = w_cache[k+1][j-1]
+        left = _w(seq, i + 1, k, temp, v_cache, w_cache, emap)
+        right = _w(seq, k + 1, j - 1, temp, v_cache, w_cache, emap)
     else:
-        left = w_cache[i][k]
-        right = w_cache[k+1][j]
+        left = _w(seq, i, k, temp, v_cache, w_cache, emap)
+        right = _w(seq, k + 1, j, temp, v_cache, w_cache, emap)
 
-   
+    if not left or not right:
+        return STRUCT_NULL
+
     # gather all branches of this multi-branch structure
     branches: List[Tuple[int, int]] = []
 
@@ -687,7 +744,7 @@ def _multi_branch(
             branches.append(s.ij[0])
             return
         for i1, j1 in s.ij:
-            add_branch(w_cache[i1][j1])
+            add_branch(_w(seq, i1, j1, temp, v_cache, w_cache, emap))
 
     add_branch(left)
     add_branch(right)
@@ -699,70 +756,61 @@ def _multi_branch(
     # if there's a helix, i,j counts as well
     if helix:
         branches.append((i, j))
-    #if i ==4 and j==41:
-       # print(branches)
+
     # count up unpaired bp and asymmetry
     branches_count = len(branches)
     unpaired = 0
     e_sum = 0.0
     for index, (i2, j2) in enumerate(branches):
-            i1, j1 = branches[(index - 1) % len(branches)]
-            i3, j3 = branches[(index + 1) % len(branches)]
+        _, j1 = branches[(index - 1) % len(branches)]
+        i3, j3 = branches[(index + 1) % len(branches)]
 
-            # add energy from unpaired bp to the right
-            # of the helix as though it was a dangling end
-            # if there's only one bp, it goes to whichever
-            # helix (this or the next) has the more favorable energy
-            unpaired_left = 0
-            unpaired_right = 0
-            de = 0.0
-            if index == len(branches) - 1 and not helix:
-                pass
-            elif (i3, j3) == (i, j):
-                unpaired_left = i2 - j1 - 1
-                unpaired_right = j3 - j2 - 1
-                if unpaired_left and unpaired_right:
-                    de = _stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap)
-                elif unpaired_right:
-                    de = _stack(seq, -1, i2, j2 + 1, j2, temp, emap)
-                    if unpaired_right == 1:
-                        de = min(_stack(seq, j3-1, j3, -1, i3 , temp, emap), de)
-            elif (i2, j2) == (i, j):
-                unpaired_left = j2 - j1 - 1
-                unpaired_right = i3 - i2 - 1
+        # add energy from unpaired bp to the right
+        # of the helix as though it was a dangling end
+        # if there's only one bp, it goes to whichever
+        # helix (this or the next) has the more favorable energy
+        unpaired_left = 0
+        unpaired_right = 0
+        de = 0.0
+        if index == len(branches) - 1 and not helix:
+            pass
+        elif (i3, j3) == (i, j):
+            unpaired_left = i2 - j1 - 1
+            unpaired_right = j3 - j2 - 1
 
-                if unpaired_left and unpaired_right:
-                    de = _stack(seq, j2-1 , j2, i2+1, i2, temp, emap)
-                elif unpaired_right:
-                    de = _stack(seq, -1, j2, i2+1, i2, temp, emap)
-                    if unpaired_right == 1:
-                        de = min(_stack(seq, i3 - 1, i3, -1, j3, temp, emap), de)
-            elif (i1 ,j1) == (i, j):
-                    unpaired_left = i2 - i1 - 1
-                    unpaired_right = i3 - j2 - 1
-                    if unpaired_left and unpaired_right:
-                        de = _stack(seq, i2-1 , i2, j2+1, j2, temp, emap)
-                    elif unpaired_right:
-                        de = _stack(seq, -1, i2, j2+1, j2, temp, emap)
-                        if unpaired_right == 1:
-                            de = min(_stack(seq, i3 - 1, i3, -1, j3, temp, emap), de)
-            else:
-                unpaired_left = i2 - j1 - 1
-                unpaired_right = i3 - j2 - 1
+            if unpaired_left and unpaired_right:
+                de = _stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap)
+            elif unpaired_right:
+                de = _stack(seq, -1, i2, j2 + 1, j2, temp, emap)
+                if unpaired_right == 1:
+                    de = min(_stack(seq, i3, -1, j3, j3 - 1, temp, emap), de)
+        elif (i2, j2) == (i, j):
+            unpaired_left = j2 - j1 - 1
+            unpaired_right = i3 - i2 - 1
 
-                if unpaired_left and unpaired_right:
-                    de = _stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap)
-                elif unpaired_right:
-                    de = _stack(seq, -1, i2, j2 + 1, j2, temp, emap)
-                    if unpaired_right == 1:
-                        de = min(_stack(seq, i3 - 1, i3, -1, j3, temp, emap), de)
-            e_sum += de
-            unpaired += unpaired_right
-            assert unpaired_right >= 0
+            if unpaired_left and unpaired_right:
+                de = _stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap)
+            elif unpaired_right:
+                de = _stack(seq, i2, i2 + 1, j2, -1, temp, emap)
+                if unpaired_right == 1:
+                    de = min(_stack(seq, i3 - 1, i3, -1, j3, temp, emap), de)
+        else:
+            unpaired_left = i2 - j1 - 1
+            unpaired_right = i3 - j2 - 1
 
-            if (i2, j2) != (i, j): 
-                    e_sum += v_cache[i2][j2].e
-            
+            if unpaired_left and unpaired_right:
+                de = _stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap)
+            elif unpaired_right:
+                de = _stack(seq, -1, i2, j2 + 1, j2, temp, emap)
+                if unpaired_right == 1:
+                    de = min(_stack(seq, i2 - 1, i2, j2 + 1, j2, temp, emap), de)
+
+        e_sum += de
+        unpaired += unpaired_right
+        assert unpaired_right >= 0
+
+        if (i2, j2) != (i, j):  # add energy
+            e_sum += _w(seq, i2, j2, temp, v_cache, w_cache, emap).e
 
     assert unpaired >= 0
 
@@ -771,7 +819,7 @@ def _multi_branch(
     e_multibranch = a + b * len(branches) + c * unpaired
 
     if unpaired == 0:
-        e_multibranch = a - d
+        e_multibranch = a + d
 
     # energy of min-energy neighbors
     e = e_multibranch + e_sum
@@ -804,13 +852,12 @@ def _traceback(i: int, j: int, v_cache: Structs, w_cache: Structs) -> List[Struc
 
     # move i,j down-left to start coordinates
     s = w_cache[i][j]
-    
     if "HAIRPIN" not in s.desc:
         while w_cache[i + 1][j] == s:
             i += 1
         while w_cache[i][j - 1] == s:
             j -= 1
-    
+
     structs: List[Struct] = []
     while True:
         s = v_cache[i][j]
@@ -827,6 +874,7 @@ def _traceback(i: int, j: int, v_cache: Structs, w_cache: Structs) -> List[Struc
             i, j = s.ij[0]
             continue
 
+        # it's a multibranch
         e_sum = 0.0
         structs = _trackback_energy(structs)
         branches: List[Struct] = []

@@ -1,8 +1,9 @@
 """Python implementation of gmfold to predict secondary structure of single-stranded DNA sequences
 
 This script is based on code from the following open-source repository:
-Repository: https://github.com/Lattice-Automation/seqfold
+Repository: https://github.com/Lattice-Automation/seqfold 
 License: MIT License
+Accessed: 20 July 2024.
 
 Significant modifications have been made to the original code to adapt it for our paper.
 """
