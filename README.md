@@ -1,13 +1,16 @@
 # GMFOLD: Graph matching for DNA-aptamer secondary structure classification and machine learning interpretabiity
 
-This repository contains the code and experiments to replicate the results presented in the paper titled "GMFOLD: Graph matching for DNA-aptamer secondary structure classification and machine learning interpretabiity"
+This repository contains the code and experiments to replicate the results presented in the paper titled "GMFOLD: Graph matching for DNA-aptamer secondary structure classification and machine learning interpretability"
 
-**Anne Andrews**^[3], **Andrea L. Bertozzi**^[1, 2], **Paolo Climaco**^[4], **Noelle Mitchell**^[3], **Cameron Movassaghi**^[3] and **Matthew Tyler**^[2].
+**Paolo Climaco**^[1], **Noelle Mitchell**^[2], **Matthew Tyler**^[3], **Kyungae Yang**[4],  **Anne Andrews**^[2,5,6]. and **Andrea L. Bertozzi**^[3,5]
 
-[1] California NanoSystems Institute, University of California, Los Angeles, 90095, CA, USA\
-[2] Department of Mathematics, University of California, Los Angeles, 90095, CA, USA\
-[3] Department of Chemistry and BioChemistry, Los Angeles, 90095, CA, USA\
-[4] Institut für Numerische Simulation, Universität Bonn, Germany
+[1] Institut für Numerische Simulation, Universität Bonn, Germany
+[2] Department of Chemistry and BioChemistry, University of California, Los Angeles, 90095, CA, USA\
+[3] Department of Mathematics, University of California, Los Angeles, 90095, CA, USA\
+[4] Department of Medicine, Columbia University Irving Medical Center, New York, NY, 10032, USA\
+[5] California NanoSystems Institute, University of California, Los Angeles, 90095, CA, USA\
+[6] Departments of Psychiatry and Biobehavioral Sciences and Bioengineering, Semel Institute for Neuroscience and Human Behavior, and Hatos Center for Neuropharmacology , Los Angeles, 90095, CA, USA
+
 
 Contact climaco@ins.uni-bonn for questions about code and data.
 
