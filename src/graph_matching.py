@@ -13,7 +13,7 @@ import copy
 class Aptamer_match():
     """Class function to solve graph matching problem 
     """
-    def __init__(self, sequence='ATA', n_tmpl=4):
+    def __init__(self, sequence='ATA', n_tmpl=4, mode='dna'):
         self.l_fix= None # number of fixed base pairs in the initial stem.
         self.n_tmpl =  n_tmpl
         self.n_wrld = None
@@ -23,6 +23,7 @@ class Aptamer_match():
         self.dlt_g  = None #matrix sotring backbone bonds
         self.motifs = []  #list of all tmpl graphs found
         self.bps = [] #list of non isolated base pairs
+        self.mode = mode
 
 
 
@@ -30,7 +31,13 @@ class Aptamer_match():
         """
         Converts a nucleotide string into a list of numeric representations.
         """
-        mapping = {'A': 0, 'a': 0, 'T': 3, 't': 3, 'C': 1, 'c':1, 'G': 2, 'g':2}
+        if self.mode == 'dna':
+            mapping = {'A': 0, 'a': 0, 'T': 3, 't': 3, 'C': 1, 'c':1, 'G': 2, 'g':2}
+        elif self.mode == 'rna':
+            mapping = {'A': 0, 'a': 0, 'U': 3, 'u': 3, 'C': 1, 'c':1, 'G': 2, 'g':2}
+        else:
+            raise(ValueError, f'mode should be either [dna, rna] but got {mode}')
+
         self.sqnc_num = []
         for char in self.sequence:
             if char in mapping:
