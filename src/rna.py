@@ -16,7 +16,7 @@ if new_path not in sys.path:
 
 """RNA enthalpy and entropy change parameters."""
 
-from .types import Comp, MultiBranch, BpEnergy, LoopEnergy, Energies
+from Types import Comp, MultiBranch, BpEnergy, LoopEnergy, Energies
 
 RNA_COMPLEMENT: Comp = {"A": "U", "U": "A", "G": "C", "C": "G", "N": "N"}
 
