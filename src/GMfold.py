@@ -64,7 +64,7 @@ def gmfold(seq: str, temp: float = 37.0, l_fix = 0, n_branches = 4, mode='dna') 
     """
     
     # Solve graph matching problem
-    APT = Aptamer_match()
+    APT = Aptamer_match(mode=mode)
     APT.fit_fold( sequence=seq ,  n_tmpl=4, l_fix= l_fix )
     S = APT.dict_Sij
     D = APT.dict_d
