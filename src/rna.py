@@ -92,7 +92,8 @@ RNA_INTERNAL_MM: BpEnergy = {
     "AU/AG": (0.0, 0.0),
     "AU/AU": (0.0, 0.0),
     "AU/CA": (0.0, 0.0),
-    "AU/CC": (0.0, 0.0)    "AU/CG": (0.0, 0.0),
+    "AU/CC": (0.0, 0.0),
+    "AU/CG": (0.0, 0.0),
     "AU/CU": (0.0, 0.0),
     "AU/GA": (0.0, 0.0),
     "AU/GC": (0.0, 0.0),
@@ -796,8 +797,3 @@ RNA_ENERGIES = Energies(
     RNA_TERMINAL_MM,
     None,
 )
-:w
-
-Vkk
-
-kVk::s
