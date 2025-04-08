@@ -13,6 +13,7 @@ import math
 from typing import List, Tuple
 import numpy as np
 from dna import DNA_ENERGIES
+from rna import RNA_ENERGIES
 from Types import Energies, Cache
 from graph_matching import  Aptamer_match
 from gm_energy_functions import _bulge, _hairpin, gm_multi_branch, all_combinations, open_ending_branch, _stack, _pair, _internal_loop, Struct
@@ -116,7 +117,7 @@ def gm_dot_bracket(seq: str, structs: List[Struct]) -> str:
     return "".join(result)
 
 
-def _cache(seq: str, temp: float = 37.0, S= None, D = None, l_fix = 0, n_branches = None) :
+def _cache(seq: str, temp: float = 37.0, S= None, D = None, l_fix = 0, n_branches = None, mode='dna') :
     """Create and fill the e_cache
     Args:
         seq: The sequence to fold
@@ -134,7 +135,12 @@ def _cache(seq: str, temp: float = 37.0, S= None, D = None, l_fix = 0, n_branche
     temp = temp + 273.15  # kelvin
 
     # Set DNA energies. By changing these energies the following code can ptentially be used for RNA sequences
-    emap = DNA_ENERGIES 
+    if mode == 'dna':
+        emap = DNA_ENERGIES 
+    elif mode == 'rna':
+        emap = RNA_ENERGIES 
+    else:
+        raise(ValueError, f'mode must be either [dna, rna] but found value {mode}')
     n = len(seq)
     e_cache: Structs = []
 
