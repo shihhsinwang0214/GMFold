@@ -235,7 +235,7 @@ def _e(
     isolated_inner = emap.COMPLEMENT[seq[i + 1]] != seq[j - 1]
 
     if isolated_outer and isolated_inner:
-        e_cache[i][j] = Struct(1600)
+        e_cache[i][j] = Struct(5000)#1600)
         return e_cache[i][j]
     
     # E1 = FH(i, j); hairpin
