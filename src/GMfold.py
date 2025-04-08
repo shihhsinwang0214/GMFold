@@ -52,7 +52,7 @@ def gm_s_matrix(seq: str, structs: List[Struct], size = None):
                 M[j,i] = 1
     return M
 
-def gmfold(seq: str, temp: float = 37.0, l_fix = 0, n_branches = 4) -> List[Struct]:
+def gmfold(seq: str, temp: float = 37.0, l_fix = 0, n_branches = 4, mode='dna') -> List[Struct]:
     """Fold the DNA sequence and return the lowest free energy score.
     Args:
         seq: the sequence to fold.
@@ -71,7 +71,7 @@ def gmfold(seq: str, temp: float = 37.0, l_fix = 0, n_branches = 4) -> List[Stru
     bps = APT.bps
 
     # Fill e_cache
-    e_cache,   min_struct, min_ene= _cache(seq, temp, S, D, l_fix=l_fix, n_branches= n_branches)
+    e_cache,   min_struct, min_ene= _cache(seq, temp, S, D, l_fix=l_fix, n_branches= n_branches, mode=mode)
     
     n = len(seq)
     branches = []   
