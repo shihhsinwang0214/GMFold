@@ -14,6 +14,7 @@ import math
 from typing import List, Tuple
 import numpy as np
 from dna import DNA_ENERGIES
+from rna import RNA_ENERGIES
 sys.path.append(r'.\src')
 from Types import Energies, Cache
 from graph_matching import  Aptamer_match
