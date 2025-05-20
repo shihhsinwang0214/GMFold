@@ -56,7 +56,7 @@ Structs = List[List[Struct]]
 """A map from i, j tuple to a min free energy Struct."""
 
 
-def fold_2(seq: str, temp: float = 37.0) -> List[Struct]:
+def fold_2(seq: str, temp: float = 37.0, mode='dna') -> List[Struct]:
     """Fold the DNA sequence and return the lowest free energy score.
 
     Based on the approach described in:
@@ -76,11 +76,11 @@ def fold_2(seq: str, temp: float = 37.0) -> List[Struct]:
         List[Struct]: A list of structures. Stacks, bulges, hairpins, etc.
     """
      # Solve graph matching problem
-    APT = Aptamer_match()
+    APT = Aptamer_match(mode=mode)
     APT.fit_fold( sequence=seq ,  n_tmpl=4, l_fix= 0 )
     S = APT.dict_Sij
     
-    v_cache, w_cache = _cache(seq, temp, S)
+    v_cache, w_cache = _cache(seq, temp, S, mode=mode)
     n = len(seq)
    
     #print(w_cache[4][41])
@@ -125,7 +125,7 @@ def dot_bracket(seq: str, structs: List[Struct]) -> str:
     return "".join(result)
 
 
-def _cache(seq: str, temp: float = 37.0, S = None) -> Tuple[Structs, Structs]:
+def _cache(seq: str, temp: float = 37.0, S = None, mode='dna') -> Tuple[Structs, Structs]:
     """Create caches for the w_cache and v_cache
 
     The Structs is useful for gathering many possible energies
@@ -159,7 +159,12 @@ def _cache(seq: str, temp: float = 37.0, S = None) -> Tuple[Structs, Structs]:
     elif any(bp not in "ATGC" for bp in bps):
         diff = [bp for bp in bps if bp not in "ATUGC"]
         raise RuntimeError(f"Unknown bp: {diff}. Only DNA/RNA foldable")
-    emap = DNA_ENERGIES 
+    if mode == 'dna':
+        emap = DNA_ENERGIES 
+    elif mode == 'rna':
+        emap = RNA_ENERGIES 
+    else:
+        raise(ValueError, f'mode must be either [dna, rna] but found value {mode}')
     min_ene = np.inf
     n = len(seq)
     v_cache: Structs = []
