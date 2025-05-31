@@ -1,7 +1,3 @@
-import pandas as pd
-import random
-import re
-
 from __future__ import print_function
 from __future__ import division
 from builtins import zip
@@ -19,6 +15,12 @@ import logging
 import itertools
 import colorsys
 from matplotlib import cm
+
+import pandas as pd
+import random
+import re
+
+
 
 
 def remove_spaces_and_convert_to_upper(input_string, remove_first = 5):
