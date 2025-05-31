@@ -34,7 +34,7 @@ class Aptamer_match():
         if self.mode == 'dna':
             mapping = {'A': 0, 'a': 0, 'T': 3, 't': 3, 'C': 1, 'c':1, 'G': 2, 'g':2}
         elif self.mode == 'rna':
-            mapping = {'A': 0, 'a': 0, 'U': 3, 'u': 3, 'C': 1, 'c':1, 'G': 2, 'g':2}
+            mapping = {'A': 0, 'a': 0, 'U': 3, 'u': 3, 'C': 1, 'c':1, 'G': 2, 'g':2, 'N':4, 'n':4}
         else:
             raise(ValueError, f'mode should be either [dna, rna] but got {mode}')
 
