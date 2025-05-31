@@ -356,7 +356,8 @@ def _internal_loop(
     # apply penalty based on the mismatching pairs on either side of the loop
     # Modification: add large penalty to the case involve 'N'
     pair_left_mm = _pair(seq, i, i + 1, j, j - 1)
-    print(f'pair_left_mm = {pair_left_mm}')
+    # print(f'pair_left_mm = {pair_left_mm}')
+    
     if 'N' in pair_left_mm:
         d_h, d_s = 0, 0
     else:
