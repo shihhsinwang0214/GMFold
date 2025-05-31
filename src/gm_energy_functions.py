@@ -25,7 +25,7 @@ class Struct:
         self.e: float = e
         self.desc: str = desc
         self.ij: List[Tuple[int, int]] = ij
-        
+
     def __eq__(self, other) -> bool:
         return self.e == other.e and self.ij == other.ij
 
@@ -43,20 +43,19 @@ class Struct:
 
 Structs = List[List[Struct]]
 
-
 STRUCT_DEFAULT = Struct(-math.inf)
 STRUCT_NULL = Struct(math.inf)
 
 def all_combinations(elements, r1=2, r2= 4):
     all_combs = []
-    
+
     # Generate combinations of all lengths beetween r1 and r2-1
     for r in range(r1, r2):
         combs = combinations(elements, r)
         for comb in combs:
             if not segments_intersect(list(comb)):
                 all_combs.append(list(comb))
-    
+
     return all_combs
 
 def _pair(s: str, i: int, i1: int, j: int, j1: int) -> str:
@@ -80,7 +79,7 @@ def _pair(s: str, i: int, i1: int, j: int, j1: int) -> str:
         + (s[j] if j >= 0 else ".")
         + (s[j1] if j1 >= 0 else ".")
     )
-    
+
 def _d_g(d_h: float, d_s: float, temp: float) -> float:
     """Find the free energy given delta h, s and temp
 
@@ -146,6 +145,11 @@ def _stack(
         return 0.0
 
     pair = _pair(seq, i, i1, j, j1)
+    if "N" in pair:
+        # treated as a mismatch
+        d_h, d_s = 0, 0
+        return _d_g(d_h, d_s, temp)
+
     if any(x == -1 for x in [i, i1, j, j1]):
         # it's a dangling end
         d_h, d_s = emap.DE[pair]
@@ -204,8 +208,16 @@ def _hairpin(seq: str, i: int, j: int, temp: float, emap: Energies) -> float:
         return math.inf
 
     hairpin = seq[i : j + 1]
+
+    # if hairpin[0] == "N":
+    #     hairpin = hairpin[1:]
+
     hairpin_len = len(hairpin) - 2
     pair = _pair(seq, i, i + 1, j, j - 1)
+
+    # print(i, j, hairpin)
+    # print(emap.COMPLEMENT[hairpin[0]], hairpin[-1])
+    # print(f"emap.COMPLEMENT:{emap.COMPLEMENT}")
 
     if emap.COMPLEMENT[hairpin[0]] != hairpin[-1]:
         # not known terminal pair, nothing to close "hairpin"
@@ -319,7 +331,7 @@ def _internal_loop(
 
     if loop_left < 1 or loop_right < 1:
         raise RuntimeError
-    
+
     # single bp mismatch, sum up the two single mismatch pairs (this is one of the differences from original Seqfold code)
     if loop_left == 1 and loop_right == 1:
         mm_left = _stack(seq, i, i1-1, j, j1+1, temp, emap)
@@ -342,12 +354,22 @@ def _internal_loop(
     d_g += 0.3 * loop_asymmetry
 
     # apply penalty based on the mismatching pairs on either side of the loop
+    # Modification: add large penalty to the case involve 'N'
     pair_left_mm = _pair(seq, i, i + 1, j, j - 1)
-    d_h, d_s = emap.TERMINAL_MM[pair_left_mm]
+    print(f'pair_left_mm = {pair_left_mm}')
+    if 'N' in pair_left_mm:
+        d_h, d_s = 0, 0
+    else:
+        d_h, d_s = emap.TERMINAL_MM[pair_left_mm]
+
     d_g += _d_g(d_h, d_s, temp)
 
+
     pair_right_mm = _pair(seq, i1 - 1, i1, j1 + 1, j1)
-    d_h, d_s = emap.TERMINAL_MM[pair_right_mm]
+    if 'N' in pair_right_mm:
+        d_h, d_s = 0, 0
+    else:
+        d_h, d_s = emap.TERMINAL_MM[pair_right_mm]
     d_g += _d_g(d_h, d_s, temp)
 
     return d_g
@@ -362,21 +384,21 @@ def segments_intersect(segments):
     '''
     # Sort segments based on the start point
     segments.sort()
-    
+
     # Initialize the end of the first segment
     current_end = segments[0][1]
-    
+
     # Iterate over the sorted segments
     for i in range(1, len(segments)):
         start, end = segments[i]
-        
+
         # Check if the current segment starts before the previous one ends
         if start <= current_end:
             return True
-        
+
         # Update the current end to be the maximum end seen so far
         current_end = max(current_end, end)
-    
+
     return False
 
 def gm_multi_branch(
@@ -410,10 +432,10 @@ def gm_multi_branch(
     # this isn't multi-branched
     if len(branches) < 2:
         return STRUCT_NULL
-   
+
 
     # if there's a helix, i,j counts as well
-    
+
     branches.append((i, j))
     branches_copy = branches
     branches = sorted(branches_copy, key=lambda x: x[0])
@@ -431,7 +453,7 @@ def gm_multi_branch(
         unpaired_left = 0
         unpaired_right = 0
         de = 0.0
-    
+
         if (i3, j3) == (i, j):
             unpaired_left = i2 - j1 - 1
             unpaired_right = j3 - j2 - 1
@@ -475,15 +497,15 @@ def gm_multi_branch(
         unpaired += unpaired_right
         assert unpaired_right >= 0
 
-        if (i2, j2) != (i, j): 
+        if (i2, j2) != (i, j):
                 e_sum += e_cache[i2][j2].e
-            
+
     assert unpaired >= 0
 
     # penalty for unmatched bp and multi-branch
     a, b, c, d = emap.MULTIBRANCH
     e_multibranch = a + b * len(branches) + c * unpaired
-  
+
     if unpaired == 0: #make coxial stacking favorable
          e_multibranch = a- d
 
@@ -515,8 +537,7 @@ def open_ending_branch(
     e = 0.0
     for bp in branches:
         e += e_cache[bp[0]][bp[1]].e
-    
+
 
     return Struct(e, f"OPEN_ENDING_MULTI_BRANCH:{str(len(branches))}h", branches)
-
 
