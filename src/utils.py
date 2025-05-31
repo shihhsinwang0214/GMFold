@@ -4,6 +4,7 @@ from builtins import zip
 from past.builtins import basestring
 
 import Bio
+from forgi.graph.bulge_graph import BulgeGraph
 import forgi.graph.residue as fgr
 import forgi.threedee.model.coarse_grain as ftmc
 import forgi.threedee.utilities.pdb as ftup
