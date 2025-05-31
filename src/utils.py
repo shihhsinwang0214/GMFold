@@ -375,9 +375,6 @@ def plot_rna_multiple(cg, separator_positions = None, ax=None, ignore_gaps = Tru
         else:
             prev_idx = idx
 
-    print(f"separator_positions: {separator_positions}")
-    print(f"segment_list: {segment_list}")
-
     # Backbone
     # Skip the connection indicated by separator_positions and draw only the segments
     if ignore_gaps:
