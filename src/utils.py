@@ -22,6 +22,8 @@ import re
 
 
 
+log = logging.getLogger(__name__)
+
 
 def remove_spaces_and_convert_to_upper(input_string, remove_first = 5):
     #input_string = input_string.upper()
